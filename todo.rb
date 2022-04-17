@@ -28,8 +28,14 @@ helpers do
     end
   end
 
-  def valid_list_name()
-  
+  def unique_list_name?(list_name)
+    return false if session[:lists].any? do |list|
+      list[:name] == list_name
+    end
+  end
+
+  def valid_list_name?(list_name)
+    (1..100).cover?(list_name.size) 
   end
 end
 
@@ -49,15 +55,24 @@ get "/lists" do
 end
 
 post "/lists" do
-  # validate params :list_name
-    # redirect to get /lists with session:error
-      # hand off display of error to lists.erb with same parameter clearing pattern to 
-  new_list = { name: params[:list_name], todos: [] }
-  session[:lists] << new_list
-  session[:newest_list] = new_list # non-official solution, will need to replace if switching to ids
-  session[:success] = "\"#{session[:newest_list][:name]}\" added"
+  list_name = params[:list_name].strip
 
-  redirect "/lists"
+  if valid_list_name?(list_name) == false
+    session[:error] = 'List names must be between 1 and 100 characters'
+    erb :new_list, layout: :layout
+  elsif unique_list_name?(list_name) == false
+    session[:error] = "List not added - a list named \"#{list_name}\" already exists"
+
+    erb :new_list, layout: :layout 
+    # repetition of pattern, can pages be rendered from helper?
+  else
+    new_list = { name: list_name, todos: [] }
+    session[:lists] << new_list
+    session[:newest_list] = new_list # non-official solution, will need to replace if switching to ids
+    session[:success] = "\"#{session[:newest_list][:name]}\" added"
+
+    redirect "/lists"
+  end
 end
 
 get "/lists/new" do
