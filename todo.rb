@@ -28,19 +28,43 @@ helpers do
     end
   end
 
-  def unique_list_name?(list_name)
-    return false if session[:lists].any? do |list|
-      list[:name] == list_name
+  def unique_list_name?(name)
+    session[:lists].all? do |list|
+      list[:name] != name
     end
   end
 
-  def valid_list_name?(list_name)
-    (1..100).cover?(list_name.size) 
+  def valid_list_length?(name)
+    (1..100).cover?(name.size) 
+  end
+
+  # return error message str if error, otherwise nill
+  def error_for_list_name(name)
+    puts "unique_list_name?#{name} == #{unique_list_name?(name)}"
+
+    if valid_list_length?(name) == false
+      'List names must be between 1 and 100 characters'
+    elsif unique_list_name?(name) == false
+      "List not added - a list named \"#{name}\" already exists"
+    else
+      nil
+    end
   end
 end
 
 before do 
-  session[:lists] ||= []
+  session[:lists] ||= [
+                       name: "Chores",
+                       todos: [ 
+                         { desc: "Sweep",
+                           complete: false },
+                         { desc: "Vacuum",
+                           complete: false },
+                         { desc: "Water plants",
+                           complete: false }
+                       ]
+
+  ]
   # Why not @lists = session[:lists] up here?
 end
 
@@ -57,16 +81,13 @@ end
 post "/lists" do
   list_name = params[:list_name].strip
 
-  if valid_list_name?(list_name) == false
-    session[:error] = 'List names must be between 1 and 100 characters'
+  error = error_for_list_name(list_name)
+  if error # returns the error message or nil
+    puts "hello from line 84"
+    session[:error] = error
     erb :new_list, layout: :layout
-  elsif unique_list_name?(list_name) == false
-    session[:error] = "List not added - a list named \"#{list_name}\" already exists"
-
-    erb :new_list, layout: :layout 
-    # repetition of pattern, can pages be rendered from helper?
-  else
-    new_list = { name: list_name, todos: [] }
+  else # the erb call from 'if' above doesn't stop the rest from executing, need if/else for exclusion
+    new_list = { name: list_name, todos: [] } # assumed arr of str?
     session[:lists] << new_list
     session[:newest_list] = new_list # non-official solution, will need to replace if switching to ids
     session[:success] = "\"#{session[:newest_list][:name]}\" added"
@@ -79,6 +100,24 @@ get "/lists/new" do
   erb :new_list, layout: :layout
 end
 
+get "/lists/:list_id" do |list_idx|
+  @list_idx = list_idx.to_i
+  # validate integer
+    # helper valid_list_index(usr_str)
+  if @list_idx.to_s != list_idx
+    session[:error] = "List not found (not an integer"
+    redirect "/lists"
+  elsif session[:lists][@list_idx].nil?
+    session[:error] = "List not found! (index error)"
+    redirect "/lists"
+  else
+    @current_list = session[:lists][@list_idx]
+    erb :display_list, layout: :layout
+  end
+end
+
+# another /lists/* route to redirect non digit inputs?
+  # get "/lists/:not_digit_input" do 
 
 #erasing todos - add trashcans, warning dialogues, options for all vs single
 get "/eraselists" do

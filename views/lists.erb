@@ -1,8 +1,8 @@
 <ul id="lists">
-  <% @lists.each do |list| %>
+  <% @lists.each_with_index do |list, i| %>
     <li> 
       <a> 
-        <h2><%=list[:name]%></h2>
+        <h2><a href="/lists/<%=i%>"><%=list[:name]%></a></h2>
         <p><%=list[:todos].size%></p>
       </a>
     </li>
@@ -10,3 +10,7 @@
 </ul>
 
 <a href="/lists/new">Add a new list</a> 
+<div>
+  <p></p>
+  <a href="/eraselists">Delete all lists</a>
+</div>  
