@@ -9,7 +9,13 @@
   <% end %>
 </ul>
 
-<a href="/lists/new">Add a new list</a> 
+
+
+
+<% content_for :header_links do %>
+ <a href="/lists/new">Add a new list</a> 
+<% end %>
+
 <div>
   <p></p>
   <a href="/eraselists">Delete all lists</a>

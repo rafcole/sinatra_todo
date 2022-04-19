@@ -1,6 +1,8 @@
 require "sinatra"
 require "sinatra/reloader" if development?
+require "sinatra/content_for"
 require "tilt/erubis"
+
 
 
 configure do
@@ -97,10 +99,13 @@ post "/lists" do
 end
 
 get "/lists/new" do
+  
   erb :new_list, layout: :layout
 end
 
 get "/lists/:list_id" do |list_idx|
+  # relative lists in the view template start from '/lists' not 'lists/:list_id'
+
   @list_idx = list_idx.to_i
   # validate integer
     # helper valid_list_index(usr_str)
@@ -114,6 +119,44 @@ get "/lists/:list_id" do |list_idx|
     @current_list = session[:lists][@list_idx]
     erb :display_list, layout: :layout
   end
+end
+
+get "/lists/:list_id/edit" do |list_idx|
+  @list_idx = list_idx
+  @current_list = session[:lists][list_idx.to_i]
+
+  erb :edit_list, layout: :layout
+end
+
+post "/lists/:list_id/edit" do |list_idx|
+  current_list = session[:lists][list_idx.to_i]
+
+  new_list_name = params[:new_list_name].strip
+
+  ####### big naught copy past from post "/lists"
+          # need helper method for change_name(todo_list, name_str)
+
+  # If the name already exists or name not valid
+  #   Send back to edit page, display error
+  
+  edit_route = "/lists/#{list_idx}/edit".to_sym
+
+
+  error = error_for_list_name(new_list_name)
+  if error # returns the error message or nil
+    session[:error] = error
+    redirect edit_route
+  else # the erb call from 'if' above doesn't stop the rest from executing, need if/else for exclusion
+    # Everything looks good
+
+    # Edit the the name of the current list
+    session[:success] = "\"#{current_list[:name]}\" has been renamed \"#{new_list_name}\""
+
+    current_list[:name] = new_list_name
+
+    redirect "/lists"
+  end
+
 end
 
 # another /lists/* route to redirect non digit inputs?

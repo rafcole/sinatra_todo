@@ -1,0 +1,16 @@
+<form action="edit" method="post">
+  <dl>
+    <dt>
+      <label for="new_list_name">Enter a new name for your list:" <strong> <%= @current_list[:name] %></strong>"</label>
+    </dt>
+    <dd>
+      <input name="new_list_name" placeholder=<%= @current_list[:name] %> type="text" value="">
+    </dd>
+  </dl>
+  <fieldset class="actions">
+    <input type="submit" value="Save">
+    <a = href="/lists">Cancel</a>
+  </fieldset>
+</form>
+
+#cancel and return to current list

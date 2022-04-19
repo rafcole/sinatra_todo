@@ -1,13 +1,17 @@
 <section id='todos' class>
   <header>
-    <h2><%=@current_list[:name]%></h2>
-    #unordered list stuff
+    <h2><%=@current_list[:name]%> </h2>
+    <ul>
+      <a href=<%="#{@list_idx}/edit"%>>Change list name</a>
+    </ul>
   </header>
   <ul>
     <% @current_list[:todos].each do |task| %>
-      <li><%= task[:desc] %></li>
+      <li><%= task[:desc] %> </li>
     <% end %>
   </ul>
-
 </section>
-<p><a href="/">Return to all lists</a></p>
+
+<% content_for :header_links do %>
+ <a href="/">Return to all lists</a>
+<% end %>
