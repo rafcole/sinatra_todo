@@ -1,8 +1,9 @@
 <section id='todos' class>
   <header>
-    <h2><%=@current_list[:name]%> </h2>
+    <h2><%=@current_list[:name]%></h2>
     <ul>
-      <a href=<%="#{@list_idx}/edit"%>>Change list name</a>
+      <% puts "/lists/#{@list_id}/edit" %>
+      <li> <a href=<%="/lists/#{@list_id}/edit"%> class='edit' >Edit</a> 
     </ul>
   </header>
   <ul>
@@ -11,6 +12,24 @@
     <% end %>
   </ul>
 </section>
+
+
+
+<form action="/lists/<%= @list_id %>/todos" method="post">
+  <dl>
+    <dt>
+      <label for="todo">Enter a new todo item:</label>
+    </dt>
+    <dd>
+      <input name="todo" id="todo" placeholder="Something to do" type="text" value="">
+    </dd>
+  </dl>
+  <fieldset class="actions">
+    <input type="submit" value="Add">
+  </fieldset>
+</form>
+
+
 
 <% content_for :header_links do %>
  <a href="/">Return to all lists</a>

@@ -1,16 +1,41 @@
-<form action="edit" method="post">
+<section id="todos">
+  <header>
+    <h2>Editing "<%= @current_list[:name] %>"</h2>
+    <ul>
+        <li> 
+            <form id="myform" method="post" action="delete">
+            <button type="submit" class="delete">Delete List</a></form>
+        </li>
+    </ul>
+  </header>
+</section>
+
+
+<form action="/lists/<%=params[:list_id]%>" method="post">
   <dl>
     <dt>
       <label for="new_list_name">Enter a new name for your list:" <strong> <%= @current_list[:name] %></strong>"</label>
     </dt>
     <dd>
-      <input name="new_list_name" placeholder=<%= @current_list[:name] %> type="text" value="">
+
+      <% place_holder = session[:invalid_name] ? session[:invalid_name] : @current_list[:name] %>
+
+      <% puts "from within edit_list.rb - session[:invalid_name] == #{place_holder}"%>
+      <% puts "params[:new_list_name].nil? = #{params[:new_list_name].nil?}"%>
+
+      <input name="new_list_name" placeholder=<%= place_holder %> type="text" value="<%= params['new_list_name'] || @current_list[:name] %>">
+
+      <% session[:invalid_name] = nil %>
+
     </dd>
   </dl>
   <fieldset class="actions">
-    <input type="submit" value="Save">
-    <a = href="/lists">Cancel</a>
+    <input type="submit" value="Save"> 
+    <a = href="/lists/<%=params[:list_id]%>">Cancel</a>
   </fieldset>
 </form>
+ 
 
-#cancel and return to current list
+<% content_for :header_links do %>
+  <a href="/lists">All lists</a> 
+<% end %>

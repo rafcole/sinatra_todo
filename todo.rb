@@ -16,24 +16,23 @@ helpers do
     "<li><%=#{item}%></li>"
   end
 
-  def erase_lists(list_id = nil)
-    if list_id
-      session[:lists].delete_if do |list_item_hsh|
-        list_item_hsh[:name] == list_id 
-        # works with perfect formatting
-          # eg /eraselists/Home can't delete a list with the name 'Home'
-          # but lowercase works
-          # good argument for ID number instead?
-      end
-    else
-      session[:lists] = []
-    end
-  end
-
   def unique_list_name?(name)
     session[:lists].all? do |list|
       list[:name] != name
     end
+  end
+
+  def unique_todo_desc?(list, todo)
+    # puts "list.class = #{list.class}"
+    # puts "todo.class = #{todo.class}"
+    list[:todos].all? do |todo_hsh|
+      todo_hsh[:desc] != todo
+    end
+  end
+
+  def valid_desc_length?(todo)
+    # No upper limit
+    (1..500).cover? todo.size
   end
 
   def valid_list_length?(name)
@@ -85,7 +84,6 @@ post "/lists" do
 
   error = error_for_list_name(list_name)
   if error # returns the error message or nil
-    puts "hello from line 84"
     session[:error] = error
     erb :new_list, layout: :layout
   else # the erb call from 'if' above doesn't stop the rest from executing, need if/else for exclusion
@@ -103,75 +101,107 @@ get "/lists/new" do
   erb :new_list, layout: :layout
 end
 
-get "/lists/:list_id" do |list_idx|
+# display an individual list
+get "/lists/:list_id" do |list_id|
   # relative lists in the view template start from '/lists' not 'lists/:list_id'
 
-  @list_idx = list_idx.to_i
+  @list_id = list_id.to_i
   # validate integer
     # helper valid_list_index(usr_str)
-  if @list_idx.to_s != list_idx
+  if @list_id.to_s != list_id
     session[:error] = "List not found (not an integer"
     redirect "/lists"
-  elsif session[:lists][@list_idx].nil?
+  elsif session[:lists][@list_id].nil?
     session[:error] = "List not found! (index error)"
     redirect "/lists"
   else
-    @current_list = session[:lists][@list_idx]
+    @current_list = session[:lists][@list_id]
     erb :display_list, layout: :layout
   end
 end
 
-get "/lists/:list_id/edit" do |list_idx|
-  @list_idx = list_idx
-  @current_list = session[:lists][list_idx.to_i]
+get "/lists/:list_id/edit" do |list_id|
+  @list_id = list_id
+  @current_list = session[:lists][list_id.to_i]
+
+
+  puts "checking params[:new_list_name] from within get edit route == #{params[:new_list_name]}"
 
   erb :edit_list, layout: :layout
 end
 
-post "/lists/:list_id/edit" do |list_idx|
-  current_list = session[:lists][list_idx.to_i]
-
+# form submission to rename a list
+# so much overlap with post "/list", what can be extracted?
+post "/lists/:list_id" do |list_id|
+  @current_list = session[:lists][list_id.to_i]
   new_list_name = params[:new_list_name].strip
 
-  ####### big naught copy past from post "/lists"
-          # need helper method for change_name(todo_list, name_str)
-
-  # If the name already exists or name not valid
-  #   Send back to edit page, display error
-  
-  edit_route = "/lists/#{list_idx}/edit".to_sym
-
+  edit_route = "/lists/#{list_id}/edit".to_sym
 
   error = error_for_list_name(new_list_name)
-  if error # returns the error message or nil
+  if error 
+    # create a variable to track the invalid name
+      # store it in the session object
+      # If the page has displayed an error, prepopulate the form with the invalid
+      # entry
+        # Once complete, reset invalid name tracker in session
+
+
+    session[:invalid_name] = new_list_name.empty?  ? "(must_include_letters)" : new_list_name
+
+    puts "session[:invalid_name] == #{session[:invalid_name]}" # works lol wut
+
     session[:error] = error
-    redirect edit_route
-  else # the erb call from 'if' above doesn't stop the rest from executing, need if/else for exclusion
-    # Everything looks good
+    #redirect edit_route # using redirect resets params
+    erb :edit_list, layout: :layout
+  else 
+    # success message
+    session[:success] = "\"#{@current_list[:name]}\" has been renamed \"#{new_list_name}\""
 
-    # Edit the the name of the current list
-    session[:success] = "\"#{current_list[:name]}\" has been renamed \"#{new_list_name}\""
+    # actually changing the name
+    @current_list[:name] = new_list_name
 
-    current_list[:name] = new_list_name
-
-    redirect "/lists"
+    redirect "/lists/#{list_id}"
   end
-
 end
 
-# another /lists/* route to redirect non digit inputs?
-  # get "/lists/:not_digit_input" do 
+# delete a list
+post "/lists/:list_id/delete" do |list_id|
+  session[:success] = "#{session[:lists][list_id.to_i][:name]} succesfully deleted"
+  session[:lists].delete_at(list_id.to_i)
 
-#erasing todos - add trashcans, warning dialogues, options for all vs single
-get "/eraselists" do
-  erase_lists
   redirect "/lists"
 end
 
-get "/eraselists/*" do |list_id|
-  puts session[:lists].to_s
 
-  puts list_id.to_sym
-  erase_lists(list_id)
+# add a todo to a list
+post "/lists/:list_id/todos" do |list_id|
+  @list_id = list_id.to_i
+  @current_list = session[:lists][@list_id]
+  # need to validate todo
+    # redirect to specific list page if not valid
+      # lots of repeated logic from other validation/warnings
+  new_todo_desc = params[:todo].strip
+
+  if valid_desc_length?(new_todo_desc.size) && unique_todo_desc?(@current_list, new_todo_desc)
+    #success
+    new_todo = { desc: new_todo_desc, complete: false }
+    @current_list[:todos] << new_todo
+  
+    session[:success] = 'Todo added'
+  else 
+    #failure
+    session[:error] = if valid_desc_length?(new_todo_desc) == false
+                       'Todo not added - minimum length not met'
+                     else # assumed repeat
+                       "Todo not added - \"#{new_todo_desc}\" already exists"
+                     end
+  end
+
+  redirect "/lists/#{list_id}", layout: :layout
+end
+
+get "/eraselists" do
+  session[:lists] = []
   redirect "/lists"
 end

@@ -3,14 +3,11 @@
     <li> 
       <a> 
         <h2><a href="/lists/<%=i%>"><%=list[:name]%></a></h2>
-        <p><%=list[:todos].size%></p>
       </a>
+      <p><%=list[:todos].size%></p> 
     </li>
   <% end %>
 </ul>
-
-
-
 
 <% content_for :header_links do %>
  <a href="/lists/new">Add a new list</a> 
