@@ -7,13 +7,16 @@
     </ul>
   </header>
   <ul>
-    <% @current_list[:todos].each do |task| %>
-      <li><%= task[:desc] %> </li>
+    <% @current_list[:todos].each_with_index do |task, i| %>
+      <li>
+        <h3><%= task[:desc] %></h3>
+        <form action="/lists/<%= @list_id %>/todos/<%=i%>/delete" method="post" class="delete">
+          <button type="submit">Delete</button>
+        </form>
+      </li>
     <% end %>
   </ul>
 </section>
-
-
 
 <form action="/lists/<%= @list_id %>/todos" method="post">
   <dl>
@@ -21,7 +24,7 @@
       <label for="todo">Enter a new todo item:</label>
     </dt>
     <dd>
-      <input name="todo" id="todo" placeholder="Something to do" type="text" value="">
+      <input name="todo" id="todo" placeholder="Something to do" type="text" value="<%= params[:todo]%>">
     </dd>
   </dl>
   <fieldset class="actions">

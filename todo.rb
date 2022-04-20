@@ -22,11 +22,9 @@ helpers do
     end
   end
 
-  def unique_todo_desc?(list, todo)
-    # puts "list.class = #{list.class}"
-    # puts "todo.class = #{todo.class}"
+  def unique_todo_desc?(list, todo_desc)
     list[:todos].all? do |todo_hsh|
-      todo_hsh[:desc] != todo
+      todo_hsh[:desc] != todo_desc
     end
   end
 
@@ -39,10 +37,18 @@ helpers do
     (1..100).cover?(name.size) 
   end
 
+  def error_for_todo_desc(list, todo_desc)
+    if valid_desc_length?(todo_desc) == false
+      'Todo not added - minimum length not met'
+    elsif unique_todo_desc?(list, todo_desc) == false # assumed repeat
+      "Todo not added - \"#{todo_desc}\" already exists"
+    else
+      nil
+    end
+  end
+
   # return error message str if error, otherwise nill
   def error_for_list_name(name)
-    puts "unique_list_name?#{name} == #{unique_list_name?(name)}"
-
     if valid_list_length?(name) == false
       'List names must be between 1 and 100 characters'
     elsif unique_list_name?(name) == false
@@ -67,6 +73,7 @@ before do
 
   ]
   # Why not @lists = session[:lists] up here?
+  @lists = session[:lists]
 end
 
 
@@ -75,7 +82,7 @@ get "/" do
 end
 
 get "/lists" do
-  @lists = session[:lists]
+  #@lists = session[:lists]
   erb :lists, layout: :layout
 end
 
@@ -120,12 +127,10 @@ get "/lists/:list_id" do |list_id|
   end
 end
 
+# edit an individual list
 get "/lists/:list_id/edit" do |list_id|
   @list_id = list_id
   @current_list = session[:lists][list_id.to_i]
-
-
-  puts "checking params[:new_list_name] from within get edit route == #{params[:new_list_name]}"
 
   erb :edit_list, layout: :layout
 end
@@ -140,16 +145,7 @@ post "/lists/:list_id" do |list_id|
 
   error = error_for_list_name(new_list_name)
   if error 
-    # create a variable to track the invalid name
-      # store it in the session object
-      # If the page has displayed an error, prepopulate the form with the invalid
-      # entry
-        # Once complete, reset invalid name tracker in session
-
-
     session[:invalid_name] = new_list_name.empty?  ? "(must_include_letters)" : new_list_name
-
-    puts "session[:invalid_name] == #{session[:invalid_name]}" # works lol wut
 
     session[:error] = error
     #redirect edit_route # using redirect resets params
@@ -171,6 +167,9 @@ post "/lists/:list_id/delete" do |list_id|
   session[:lists].delete_at(list_id.to_i)
 
   redirect "/lists"
+  # does this redirect make sense?
+    # with @lists bumped from '/list route' into 'before' we can render /lists here
+  erb :lists, layout: :layout
 end
 
 
@@ -178,28 +177,40 @@ end
 post "/lists/:list_id/todos" do |list_id|
   @list_id = list_id.to_i
   @current_list = session[:lists][@list_id]
-  # need to validate todo
-    # redirect to specific list page if not valid
-      # lots of repeated logic from other validation/warnings
   new_todo_desc = params[:todo].strip
 
-  if valid_desc_length?(new_todo_desc.size) && unique_todo_desc?(@current_list, new_todo_desc)
-    #success
+  # returns error or nil
+  error = error_for_todo_desc(@current_list, new_todo_desc)
+
+  if error
+    session[:error] = error
+    @place_holder = new_todo_desc
+  else
     new_todo = { desc: new_todo_desc, complete: false }
     @current_list[:todos] << new_todo
   
     session[:success] = 'Todo added'
-  else 
-    #failure
-    session[:error] = if valid_desc_length?(new_todo_desc) == false
-                       'Todo not added - minimum length not met'
-                     else # assumed repeat
-                       "Todo not added - \"#{new_todo_desc}\" already exists"
-                     end
   end
-
-  redirect "/lists/#{list_id}", layout: :layout
+   
+  erb :display_list, layout: :layout
 end
+
+# delete a todo
+post "/lists/:list_id/todos/:todo_id/delete" do |list_id, todo_id|
+  @list_id = list_id.to_i
+  @current_list = session[:lists][@list_id] # {name:'monday', todos:[{todo},{todo}]}
+  current_todo = @current_list[:todos][todo_id.to_i] 
+
+  # Set a success message
+  session[:success] = "\"#{current_todo[:desc]}\" has been deleted"
+  # Delete the todo from the array of todo hashes
+  @current_list[:todos].delete_at(todo_id.to_i)
+
+  # Render specific list page
+  erb :display_list, layout: :layout
+end
+
+
 
 get "/eraselists" do
   session[:lists] = []
