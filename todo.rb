@@ -12,6 +12,21 @@ configure do
 end
 
 helpers do 
+  def sort_lists(lists, &block)
+    complete_lists, incomplete_lists = lists.partition { |list| list_complete?(list) }
+
+    incomplete_lists.each { |list| yield(list, lists.index(list)) }
+    complete_lists.each { |list| yield(list, lists.index(list)) }
+  end
+
+  #<% @current_list[:todos].each_with_index do |todo_hsh, i| %>
+  def sort_todos(todos_arr, &block)
+    complete_lists, incomplete_lists = todos_arr.partition { |todo| todo[:complete] }
+
+    incomplete_lists.each { |todo| yield(todo, todos_arr.index(todo)) }
+    complete_lists.each { |todo| yield(todo, todos_arr.index(todo)) }
+  end
+
   def list_items(item)
     "<li><%=#{item}%></li>"
   end
@@ -57,6 +72,48 @@ helpers do
       nil
     end
   end
+
+  def todo_class(todo)
+    todo[:complete] ? 'complete' : 'check'
+  end
+
+  def list_complete?(list)
+    (todos_count(list) > 0) && (todos_remaining_count(list) == 0)
+  end
+
+  # all logic required to return a specific kind of class for CSS styling
+  # current use is pretty limited because we only have 'complete' or no
+  def list_class(list)
+    'complete' if list_complete?(list)
+  end
+
+  def todos_remaining_count(list)
+    #counter = 0
+    list[:todos].select { |todo| !todo[:complete] }.size
+
+    #counter
+  end
+
+  def todos_count(list)
+    list[:todos].size
+  end
+
+  # def generate_list_id
+  #   return 1 if @lists.empty?
+  #   @lists.max_by { |list| list[:id] } + 1
+  # end
+
+  # def generate_task_id(list)
+  #   return 1 if list.empty?
+  #   list.max_by { |todo| todo[:id] } + 1
+  # end
+
+  def generate_id(task_or_list)
+    puts "ID generation requested for --- #{task_or_list}"
+    return 1 if task_or_list.empty?
+    task_or_list.max_by { |ele| ele[:id] }[:id] + 1
+  end
+
 end
 
 before do 
@@ -77,15 +134,15 @@ before do
 end
 
 
+# display lists
 get "/" do
   redirect "/lists"
 end
-
 get "/lists" do
-  #@lists = session[:lists]
   erb :lists, layout: :layout
 end
 
+# add a new list
 post "/lists" do
   list_name = params[:list_name].strip
 
@@ -94,7 +151,10 @@ post "/lists" do
     session[:error] = error
     erb :new_list, layout: :layout
   else # the erb call from 'if' above doesn't stop the rest from executing, need if/else for exclusion
-    new_list = { name: list_name, todos: [] } # assumed arr of str?
+    # Get the highest id of the existing lists
+    # Set the id for the new list to the previous max plus one
+    
+    new_list = { name: list_name, todos: [], id: generate_id(@lists) } # assumed arr of str?
     session[:lists] << new_list
     session[:newest_list] = new_list # non-official solution, will need to replace if switching to ids
     session[:success] = "\"#{session[:newest_list][:name]}\" added"
@@ -103,6 +163,7 @@ post "/lists" do
   end
 end
 
+# form for adding new lists
 get "/lists/new" do
   
   erb :new_list, layout: :layout
@@ -185,14 +246,16 @@ post "/lists/:list_id/todos" do |list_id|
   if error
     session[:error] = error
     @place_holder = new_todo_desc
+
+    erb :display_list, layout: :layout
   else
-    new_todo = { desc: new_todo_desc, complete: false }
+    new_todo = { desc: new_todo_desc, complete: false, id: generate_id(@current_list[:todos]) }
     @current_list[:todos] << new_todo
   
     session[:success] = 'Todo added'
+
+    redirect "/lists/#{list_id}"
   end
-   
-  erb :display_list, layout: :layout
 end
 
 # delete a todo
@@ -210,7 +273,37 @@ post "/lists/:list_id/todos/:todo_id/delete" do |list_id, todo_id|
   erb :display_list, layout: :layout
 end
 
+# form submission from list item checkbox
+post "/lists/:list_id/todos/:todo_id" do |list_id, todo_id|
 
+  puts "params[:complete] == #{params[:complete]}"
+
+  @list_id = list_id.to_i
+  @current_list = session[:lists][@list_id]
+  current_todo = @current_list[:todos][todo_id.to_i] 
+
+  is_completed = params[:complete] == "true"
+  current_todo[:complete] = is_completed
+
+  status = current_todo[:complete] ? '' : 'not '
+  session[:success] = "\"#{current_todo[:desc]}\" marked as #{status}complete"
+
+  redirect "/lists/#{list_id}"
+end
+
+# complete all todos for a given list
+post "/lists/:list_id/completeall" do |list_id|
+  @list_id = list_id.to_i
+  todos_arr = session[:lists][@list_id][:todos]
+
+  todos_arr.each do |todo_hsh|
+    todo_hsh[:complete] = true
+  end
+
+  session[:success] = 'All todos marked as complete'
+
+  redirect "/lists/#{list_id}"
+end
 
 get "/eraselists" do
   session[:lists] = []
