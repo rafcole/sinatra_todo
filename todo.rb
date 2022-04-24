@@ -154,7 +154,7 @@ post "/lists" do
     # Get the highest id of the existing lists
     # Set the id for the new list to the previous max plus one
     
-    new_list = { name: list_name, todos: [], id: generate_id(@lists) } # assumed arr of str?
+    new_list = { name: list_name, todos: [] }#, id: generate_id(@lists) } # assumed arr of str?
     session[:lists] << new_list
     session[:newest_list] = new_list # non-official solution, will need to replace if switching to ids
     session[:success] = "\"#{session[:newest_list][:name]}\" added"
