@@ -2,7 +2,7 @@
   <% sort_lists(@lists) do |list, i| %>
     <li class=<%= list_class(list)%> > 
       <a> 
-        <h2><a href="/lists/<%=i%>"><%=list[:name]%></a></h2>
+        <h2><a href="/lists/<%=i%>"><%=h(list[:name])%></a></h2>
       </a>
       <p><%="#{todos_remaining_count(list)}/#{todos_count(list)}"%></p> 
     </li>
@@ -16,5 +16,9 @@
 <div>
   <p></p>
   <a href="/eraselists">Delete all lists</a>
-  <p><a href="/nonsense"></p>
+  <p><a href="/nonsense">Whoops</a></p>
+  <form action="/nonsense" method="post" class="check">
+           <input type="hidden" name="complete" value="" />
+           <button type="submit">Complete</button>
+        </form>
 </div>  
