@@ -2,16 +2,33 @@ require "sinatra"
 require "sinatra/reloader" if development?
 require "sinatra/content_for"
 require "tilt/erubis"
+# require rack?
 
 
 
 configure do
+  set :erb, :escape_html => true
+
   enable :sessions
   set :session_secret, 'secret' # development only gimmick, not for prod
   # auto generates on every restart of sinatra, which will eliminate the session
 end
 
 helpers do 
+  def h(content)
+    Rack::Utils.escape_html(content)
+  end
+
+  # return list or redirect to error
+  def load_list(list_id) # take string
+    if (list_id.to_i.to_s != list_id) || @lists[list_id.to_i].nil?
+      session[:error] = "The requested list cannot be found"
+      redirect "/lists"
+    else
+      @lists[list_id.to_i]
+    end
+  end
+
   def sort_lists(lists, &block)
     complete_lists, incomplete_lists = lists.partition { |list| list_complete?(list) }
 
@@ -165,33 +182,22 @@ end
 
 # form for adding new lists
 get "/lists/new" do
-  
   erb :new_list, layout: :layout
 end
 
 # display an individual list
 get "/lists/:list_id" do |list_id|
   # relative lists in the view template start from '/lists' not 'lists/:list_id'
-
   @list_id = list_id.to_i
-  # validate integer
-    # helper valid_list_index(usr_str)
-  if @list_id.to_s != list_id
-    session[:error] = "List not found (not an integer"
-    redirect "/lists"
-  elsif session[:lists][@list_id].nil?
-    session[:error] = "List not found! (index error)"
-    redirect "/lists"
-  else
-    @current_list = session[:lists][@list_id]
-    erb :display_list, layout: :layout
-  end
+  @current_list = load_list(list_id)
+
+  erb :display_list, layout: :layout
 end
 
 # edit an individual list
 get "/lists/:list_id/edit" do |list_id|
   @list_id = list_id
-  @current_list = session[:lists][list_id.to_i]
+  @current_list = load_list(list_id)
 
   erb :edit_list, layout: :layout
 end
@@ -199,7 +205,7 @@ end
 # form submission to rename a list
 # so much overlap with post "/list", what can be extracted?
 post "/lists/:list_id" do |list_id|
-  @current_list = session[:lists][list_id.to_i]
+  @current_list = load_list(list_id)
   new_list_name = params[:new_list_name].strip
 
   edit_route = "/lists/#{list_id}/edit".to_sym
@@ -210,7 +216,7 @@ post "/lists/:list_id" do |list_id|
 
     session[:error] = error
     #redirect edit_route # using redirect resets params
-    erb :edit_list, layout: :layout
+    erb :edit_list, layout: :layout # this can go in error_for_list_name
   else 
     # success message
     session[:success] = "\"#{@current_list[:name]}\" has been renamed \"#{new_list_name}\""
@@ -224,20 +230,19 @@ end
 
 # delete a list
 post "/lists/:list_id/delete" do |list_id|
+  load_list(list_id)
+
   session[:success] = "#{session[:lists][list_id.to_i][:name]} succesfully deleted"
   session[:lists].delete_at(list_id.to_i)
 
   redirect "/lists"
-  # does this redirect make sense?
-    # with @lists bumped from '/list route' into 'before' we can render /lists here
-  erb :lists, layout: :layout
 end
 
 
 # add a todo to a list
 post "/lists/:list_id/todos" do |list_id|
   @list_id = list_id.to_i
-  @current_list = session[:lists][@list_id]
+  @current_list = load_list(list_id)
   new_todo_desc = params[:todo].strip
 
   # returns error or nil
@@ -270,16 +275,13 @@ post "/lists/:list_id/todos/:todo_id/delete" do |list_id, todo_id|
   @current_list[:todos].delete_at(todo_id.to_i)
 
   # Render specific list page
-  erb :display_list, layout: :layout
+  redirect "/lists/#{list_id}"
 end
 
 # form submission from list item checkbox
 post "/lists/:list_id/todos/:todo_id" do |list_id, todo_id|
-
-  puts "params[:complete] == #{params[:complete]}"
-
   @list_id = list_id.to_i
-  @current_list = session[:lists][@list_id]
+  @current_list = load_list(list_id)
   current_todo = @current_list[:todos][todo_id.to_i] 
 
   is_completed = params[:complete] == "true"
@@ -294,7 +296,7 @@ end
 # complete all todos for a given list
 post "/lists/:list_id/completeall" do |list_id|
   @list_id = list_id.to_i
-  todos_arr = session[:lists][@list_id][:todos]
+  todos_arr = load_list(list_id)[:todos]
 
   todos_arr.each do |todo_hsh|
     todo_hsh[:complete] = true

@@ -21,9 +21,17 @@
            <button type="submit">Complete</button>
         </form>
         
-        <form action="/lists/<%=@list_id%>/todos/<%=i%>/delete" method="post" class="delete">
-          <button type="submit">Delete</button>
+
+
+
+        <form class="delete" id="todo_delete_button" action="/lists/<%=@list_id%>/todos/<%=i%>/delete" method="post" >
+          <button type="submit">#delete_button_name</button>
         </form>
+
+
+
+
+
       </li>
     <% end %>
   </ul>

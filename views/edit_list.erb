@@ -3,7 +3,7 @@
     <h2>Editing "<%= @current_list[:name] %>"</h2>
     <ul>
         <li> 
-            <form id="myform" method="post" action="delete">
+            <form class="delete" id="myform" method="post" action="delete">
             <button type="submit" class="delete">Delete List</a></form>
         </li>
     </ul>
@@ -19,10 +19,6 @@
     <dd>
 
       <% place_holder = session[:invalid_name] ? session[:invalid_name] : @current_list[:name] %>
-
-      <% puts "from within edit_list.rb - session[:invalid_name] == #{place_holder}"%>
-      <% puts "params[:new_list_name].nil? = #{params[:new_list_name].nil?}"%>
-
       <input name="new_list_name" placeholder=<%= place_holder %> type="text" value="<%= params['new_list_name'] || @current_list[:name] %>">
 
       <% session[:invalid_name] = nil %>
